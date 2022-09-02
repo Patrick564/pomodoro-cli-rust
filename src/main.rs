@@ -11,7 +11,7 @@ use crossterm::{
     terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}
 };
 
-use crate::app::ui::draw;
+use crate::app::ui::draw_main_layout;
 // use crate::event::key::Key;
 
 fn main() -> Result<(), Error> {
@@ -29,7 +29,7 @@ fn main() -> Result<(), Error> {
     let timers: Vec<Spans> = vec![];
 
     loop {
-        terminal.draw(|rect| draw(rect, timers.clone()))?;
+        terminal.draw(|rect| draw_main_layout(rect, timers.clone()))?;
 
         match read()? {
             Event::Key(key) => {

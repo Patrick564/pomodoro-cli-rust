@@ -3,51 +3,68 @@ use tui::{
     Frame,
     backend::Backend,
     widgets::{Row, Cell, Paragraph, Block, Borders, Table, BorderType},
-    layout::{Direction, Layout, Constraint, Alignment},
+    layout::{Direction, Layout, Constraint, Alignment, Rect},
     style::{Style, Color},
     text::{Span, Spans}
 };
 
-fn draw_title<'a>() -> Paragraph<'a> {
-    let title_block = Block::default()
+fn draw_title<B>(f: &mut Frame<B>, layout_chunk: Rect)
+where
+    B: Backend,
+{
+    let chunks = Block::default()
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::White));
 
-    Paragraph::new("Pomodoro CLI")
+    let paragraph = Paragraph::new("Pomodoro CLI")
         .style(Style::default().fg(Color::Cyan))
         .alignment(Alignment::Center)
-        .block(title_block)
+        .block(chunks);
+
+    f.render_widget(paragraph, layout_chunk)
 }
 
-fn draw_body<'a>(c: Vec<Spans<'a>>) -> Paragraph<'a> {
-    let body_block = Block::default()
+fn draw_add_block<B>(f: &mut Frame<B>, layout_chunk: Rect)
+where
+    B: Backend,
+{
+    let chunks = Block::default()
         .borders(Borders::ALL)
-        .style(Style::default().fg(Color::White))
-        .border_type(BorderType::Plain);
+        .style(Style::default().fg(Color::Green));
 
-
-    Paragraph::new(c)
-        .style(Style::default().fg(Color::LightCyan))
-        .alignment(Alignment::Left)
-        .block(body_block)
+    f.render_widget(chunks, layout_chunk)
 }
 
-fn draw_add_pomodoro<'a>() -> Block<'a> {
-    // Terminal::show_cursor(&mut terminal)?;
-
-    Block::default()
+fn draw_pomodoro_block<B>(f: &mut Frame<B>, layout_chunk: Rect)
+where
+    B: Backend
+{
+    let chunks = Block::default()
         .borders(Borders::ALL)
-        .style(Style::default().fg(Color::White))
-        .border_type(BorderType::Plain)
-        .title("Set in format hours:minutes")
+        .style(Style::default().fg(Color::Cyan));
 
-    // Paragraph::new("Set in format hours:minutes")
-    //     .style(Style::default().fg(Color::LightCyan))
-    //     .alignment(Alignment::Center)
-    //     .block(add_pomodoro_block)
+    f.render_widget(chunks, layout_chunk)
 }
 
-fn draw_commands<'a>() -> Table<'a> {
+fn draw_content<B>(f: &mut Frame<B>, layout_chunk: Rect)
+where   B: Backend,
+{
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(10)
+        ].as_ref())
+        .split(layout_chunk);
+
+    draw_add_block(f, chunks[0]);
+    draw_pomodoro_block(f, chunks[1]);
+}
+
+fn draw_commands<B>(f: &mut Frame<B>, layout_chunk: Rect)
+where
+    B: Backend,
+{
     let commands_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Plain)
@@ -70,43 +87,44 @@ fn draw_commands<'a>() -> Table<'a> {
             Cell::from(Span::styled("Exit", Style::default().fg(Color::Gray))),
         ]),
     ];
-
-    Table::new(rows)
+    let table =Table::new(rows)
         .block(commands_block)
         .widths(&[Constraint::Length(11), Constraint::Min(20)])
-        .column_spacing(1)
+        .column_spacing(1);
+
+    f.render_widget(table, layout_chunk)
 }
 
-pub fn draw<B>(screen: &mut Frame<B>, clock: Vec<Spans>)
+fn draw_body<'a, B>(f: &mut Frame<B>, layout_chunk: Rect)
 where
     B: Backend,
 {
-    let area = screen.size();
-
     let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(10)].as_ref())
-        .split(area);
-
-    let body_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(20), Constraint::Length(32)].as_ref())
-        .split(chunks[1]);
+        .constraints([
+            Constraint::Percentage(85),
+            Constraint::Min(10),
+        ].as_ref())
+        .split(layout_chunk);
 
-    let add_pomodoro_chunks = Layout::default()
+    draw_content(f, chunks[0]);
+    draw_commands(f, chunks[1]);
+}
+
+pub fn draw_main_layout<B>(f: &mut Frame<B>, _clock: Vec<Spans>)
+where
+    B: Backend,
+{
+    let parent_layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(10)].as_ref())
-        .split(body_chunks[0]);
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(10)
+        ].as_ref())
+        .split(f.size());
 
-    let title = draw_title();
-    let body = draw_body(clock);
-    let add_pomodoro = draw_add_pomodoro();
-    let commands = draw_commands();
+    draw_title(f, parent_layout[0]);
+    draw_body(f, parent_layout[1]);
 
-    screen.set_cursor(32, 32);
-
-    screen.render_widget(title, chunks[0]);
-    screen.render_widget(body, add_pomodoro_chunks[1]);
-    screen.render_widget(add_pomodoro, add_pomodoro_chunks[0]);
-    screen.render_widget(commands, body_chunks[1]);
+    // screen.set_cursor(32, 32);
 }
