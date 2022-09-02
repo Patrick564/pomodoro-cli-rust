@@ -2,11 +2,13 @@
 use tui::{
     Frame,
     backend::Backend,
-    widgets::{Row, Cell, Paragraph, Block, Borders, Table, BorderType},
+    widgets::{Row, Cell, Paragraph, Block, Borders, Table, BorderType, ListItem, List},
     layout::{Direction, Layout, Constraint, Alignment, Rect},
     style::{Style, Color},
     text::{Span, Spans}
 };
+
+use crate::{App, InputMode};
 
 fn draw_title<B>(f: &mut Frame<B>, layout_chunk: Rect)
 where
@@ -21,32 +23,64 @@ where
         .alignment(Alignment::Center)
         .block(chunks);
 
-    f.render_widget(paragraph, layout_chunk)
+    f.render_widget(paragraph, layout_chunk);
 }
 
-fn draw_add_block<B>(f: &mut Frame<B>, layout_chunk: Rect)
+fn draw_add_block<B>(f: &mut Frame<B>, app: &App,layout_chunk: Rect)
 where
     B: Backend,
 {
-    let chunks = Block::default()
-        .borders(Borders::ALL)
-        .style(Style::default().fg(Color::Green));
+    let chunks = Paragraph::new(app.input.as_ref())
+        .style(
+            match app.input_mode {
+                InputMode::Normal => Style::default(),
+                InputMode::Editing => Style::default().fg(Color::Yellow),
+            }
+        )
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Add new time (hours:seconds):")
+        );
 
-    f.render_widget(chunks, layout_chunk)
+    match app.input_mode {
+        InputMode::Normal => {},
+        InputMode::Editing => {
+            f.set_cursor(
+                layout_chunk.x + app.input.len() as u16 + 1,
+                layout_chunk.y + 1
+            );
+        }
+    }
+
+    f.render_widget(chunks, layout_chunk);
 }
 
-fn draw_pomodoro_block<B>(f: &mut Frame<B>, layout_chunk: Rect)
+fn draw_pomodoro_block<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
 where
     B: Backend
 {
-    let chunks = Block::default()
-        .borders(Borders::ALL)
-        .style(Style::default().fg(Color::Cyan));
+    let messages: Vec<ListItem> = app
+        .messages
+        .iter()
+        .enumerate()
+        .map(|(i, m)| {
+            let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
+            ListItem::new(content)
+        })
+        .collect();
 
-    f.render_widget(chunks, layout_chunk)
+    let chunks = List::new(messages)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Messages")
+        );
+
+    f.render_widget(chunks, layout_chunk);
 }
 
-fn draw_content<B>(f: &mut Frame<B>, layout_chunk: Rect)
+fn draw_content<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
 where   B: Backend,
 {
     let chunks = Layout::default()
@@ -57,8 +91,8 @@ where   B: Backend,
         ].as_ref())
         .split(layout_chunk);
 
-    draw_add_block(f, chunks[0]);
-    draw_pomodoro_block(f, chunks[1]);
+    draw_add_block(f, app, chunks[0]);
+    draw_pomodoro_block(f, app, chunks[1]);
 }
 
 fn draw_commands<B>(f: &mut Frame<B>, layout_chunk: Rect)
@@ -92,10 +126,10 @@ where
         .widths(&[Constraint::Length(11), Constraint::Min(20)])
         .column_spacing(1);
 
-    f.render_widget(table, layout_chunk)
+    f.render_widget(table, layout_chunk);
 }
 
-fn draw_body<'a, B>(f: &mut Frame<B>, layout_chunk: Rect)
+fn draw_body<'a, B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
 where
     B: Backend,
 {
@@ -107,11 +141,11 @@ where
         ].as_ref())
         .split(layout_chunk);
 
-    draw_content(f, chunks[0]);
+    draw_content(f, app, chunks[0]);
     draw_commands(f, chunks[1]);
 }
 
-pub fn draw_main_layout<B>(f: &mut Frame<B>, _clock: Vec<Spans>)
+pub fn draw_main_layout<B>(f: &mut Frame<B>, app: &App)
 where
     B: Backend,
 {
@@ -124,7 +158,5 @@ where
         .split(f.size());
 
     draw_title(f, parent_layout[0]);
-    draw_body(f, parent_layout[1]);
-
-    // screen.set_cursor(32, 32);
+    draw_body(f, app, parent_layout[1]);
 }
