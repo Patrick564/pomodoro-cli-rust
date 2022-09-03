@@ -36,8 +36,12 @@ impl App {
         match key.code {
             KeyCode::Char(c) => self.input.push(c),
 
-            KeyCode::Enter => self.messages.push(self.input.drain(..).collect()),
             KeyCode::Esc => self.set_normal_mode(),
+            KeyCode::Enter => {
+                self.messages.push(self.input.drain(..).collect());
+
+                self.set_normal_mode()
+            },
             KeyCode::Backspace => {
                 self.input.pop();
 
