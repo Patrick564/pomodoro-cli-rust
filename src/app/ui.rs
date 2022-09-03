@@ -40,7 +40,7 @@ where
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Add new time (hours:seconds):")
+                .title("Add new time (hours:seconds)")
         );
 
     match app.input_mode {
@@ -60,21 +60,18 @@ fn draw_pomodoro_block<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
 where
     B: Backend
 {
-    let messages: Vec<ListItem> = app
+    let pomodoro_time: Vec<ListItem> = app
         .messages
         .iter()
-        .enumerate()
-        .map(|(i, m)| {
-            let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
-            ListItem::new(content)
-        })
-        .collect();
+        .map(|x| {
+            ListItem::new(Spans::from(Span::styled(x, Style::default().fg(Color::Gray))))
+        }).collect();
 
-    let chunks = List::new(messages)
+    let chunks = List::new(pomodoro_time)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Messages")
+                .title("Clock")
         );
 
     f.render_widget(chunks, layout_chunk);

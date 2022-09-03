@@ -4,36 +4,14 @@ pub mod handlers;
 
 use std::io::{stdout, Error};
 
-use tui::{backend::CrosstermBackend, Terminal, text::Spans};
+use tui::{backend::CrosstermBackend, Terminal};
 use crossterm::{
-    event::{EnableMouseCapture, DisableMouseCapture, read, Event, KeyCode, KeyModifiers},
+    event::{EnableMouseCapture, DisableMouseCapture, read, Event, KeyCode},
     ExecutableCommand,
     terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}
 };
 
-use crate::app::ui::draw_main_layout;
-// use crate::event::key::Key;
-
-pub enum InputMode {
-    Normal,
-    Editing,
-}
-
-pub struct App {
-    input: String,
-    input_mode: InputMode,
-    messages: Vec<String>,
-}
-
-impl Default for App {
-    fn default() -> App {
-        App {
-            input: String::new(),
-            input_mode: InputMode::Normal,
-            messages: Vec::new(),
-        }
-    }
-}
+use crate::app::{App, InputMode, ui::draw_main_layout};
 
 fn main() -> Result<(), Error> {
     enable_raw_mode()?;
@@ -54,41 +32,14 @@ fn main() -> Result<(), Error> {
 
         match read()? {
             Event::Key(key) => {
-                if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
-                    break;
-                }
-
-                if key.code == KeyCode::Char('a') {
-                    // terminal.clear()?;
-                }
-
                 match app.input_mode {
                     InputMode::Normal => match key.code {
-                        KeyCode::Char('e') => {
-                            app.input_mode = InputMode::Editing
-                        },
-                        KeyCode::Char('q') => {
-                            break;
-                        }
+                        KeyCode::Char('a') => app.set_editing_mode(),
+                        KeyCode::Char('q') => break,
 
                         _ => {}
                     },
-                    InputMode::Editing => match key.code {
-                        KeyCode::Enter => {
-                        app.messages.push(app.input.drain(..).collect());
-                        },
-                        KeyCode::Char(c) => {
-                            app.input.push(c);
-                        },
-                        KeyCode::Backspace => {
-                            app.input.pop();
-                        },
-                        KeyCode::Esc => {
-                            app.input_mode = InputMode::Normal;
-                        },
-
-                        _ => {}
-                    }
+                    InputMode::Editing => app.handle_editing_mode(key)
                 }
             },
 
