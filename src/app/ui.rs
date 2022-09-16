@@ -1,10 +1,10 @@
-// use crossterm::terminal;
+use indicatif::ProgressBar;
 use tui::{
     Frame,
     backend::Backend,
-    widgets::{Row, Cell, Paragraph, Block, Borders, Table, BorderType, ListItem, List},
+    widgets::{Row, Cell, Paragraph, Block, Borders, Table, BorderType, ListItem, List, Gauge},
     layout::{Direction, Layout, Constraint, Alignment, Rect},
-    style::{Style, Color},
+    style::{Style, Color, Modifier},
     text::{Span, Spans}
 };
 
@@ -56,29 +56,61 @@ where
     f.render_widget(chunks, layout_chunk);
 }
 
-fn draw_pomodoro_block<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
+fn draw_time_bar<B>(f: &mut Frame<B>, app: &mut App, layout_chunk: Rect)
+where
+    B: Backend
+{
+    let bar = Gauge::default()
+        .block(Block::default().borders(Borders::ALL).title("Pomodoro Time"))
+        .gauge_style(Style::default().fg(Color::Green).bg(Color::Black).add_modifier(Modifier::ITALIC))
+        .label("a")
+        .percent(app.progress);
+
+    // let pbar = ProgressBar::new(10);
+
+    f.render_widget(bar, layout_chunk);
+}
+
+fn draw_pomodoro_block<B>(f: &mut Frame<B>, app: &mut App, layout_chunk: Rect)
 where
     B: Backend
 {
     let pomodoro_time: Vec<ListItem> = app
         .messages
         .iter()
-        .map(|x| {
-            ListItem::new(Spans::from(Span::styled(x, Style::default().fg(Color::Gray))))
+        .map(|time| {
+            ListItem::new(Spans::from(Span::styled(time, Style::default().fg(Color::LightCyan))))
         }).collect();
 
-    let chunks = List::new(pomodoro_time)
+    let chunksa = List::new(pomodoro_time)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .title("Clock")
         );
 
+    let chunksb = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Length(2),
+            Constraint::Length(1),
+        ].as_ref())
+        .margin(1)
+        .split(layout_chunk);
+
+    let chunks = Block::default()
+        .borders(Borders::ALL);
+
     f.render_widget(chunks, layout_chunk);
+
+    draw_time_bar(f, app, chunksb[0]);
+
 }
 
-fn draw_content<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
-where   B: Backend,
+fn draw_content<B>(f: &mut Frame<B>, app: &mut App, layout_chunk: Rect)
+where
+    B: Backend,
 {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -126,7 +158,7 @@ where
     f.render_widget(table, layout_chunk);
 }
 
-fn draw_body<'a, B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
+fn draw_body<'a, B>(f: &mut Frame<B>, app: &mut App, layout_chunk: Rect)
 where
     B: Backend,
 {
@@ -142,7 +174,7 @@ where
     draw_commands(f, chunks[1]);
 }
 
-pub fn draw_main_layout<B>(f: &mut Frame<B>, app: &App)
+pub fn draw_main_layout<B>(f: &mut Frame<B>, app: &mut App)
 where
     B: Backend,
 {

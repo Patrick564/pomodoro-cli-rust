@@ -2,11 +2,11 @@ pub mod app;
 pub mod event;
 pub mod handlers;
 
-use std::io::{stdout, Error};
+use std::{io::{stdout, Error}, time::{Instant, Duration}};
 
 use tui::{backend::CrosstermBackend, Terminal};
 use crossterm::{
-    event::{EnableMouseCapture, DisableMouseCapture, read, Event, KeyCode},
+    event::{EnableMouseCapture, DisableMouseCapture, read, Event, KeyCode, poll},
     ExecutableCommand,
     terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}
 };
@@ -25,25 +25,42 @@ fn main() -> Result<(), Error> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::default();
+    let app = &mut App::default();
+
+    let mut last_tick = Instant::now();
+    let tick_rate = Duration::from_millis(200);
 
     loop {
-        terminal.draw(|rect| draw_main_layout(rect, &app))?;
+        terminal.draw(|rect| draw_main_layout(rect, app))?;
 
-        match read()? {
-            Event::Key(key) => {
-                match app.input_mode {
-                    InputMode::Normal => match key.code {
-                        KeyCode::Char('a') => app.set_editing_mode(),
-                        KeyCode::Char('q') => break,
+        let timeout = tick_rate
+            .checked_sub(last_tick.elapsed())
+            .unwrap_or_else(|| Duration::from_secs(0));
 
-                        _ => {}
+        if poll(timeout)? {
+            match read()? {
+                Event::Key(key) => {
+                    match app.input_mode {
+
+                        InputMode::Normal => match key.code {
+                            KeyCode::Char('a') => app.set_editing_mode(),
+                            KeyCode::Char('q') => break,
+
+                            _ => {}
+                        },
+                        InputMode::Editing => app.handle_editing_mode(key)
+                        }
                     },
-                    InputMode::Editing => app.handle_editing_mode(key)
-                }
-            },
 
-            _ => {}
+                _ => {}
+            }
+        }
+
+        if app.total_time.len() > 0 {
+            // if app.progress <= app.total_time[0] {
+                app.on_tick();
+                last_tick = Instant::now();
+            // }
         }
     }
 

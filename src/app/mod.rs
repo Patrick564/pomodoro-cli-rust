@@ -1,4 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent};
+use indicatif::ProgressBar;
 
 pub mod ui;
 
@@ -11,6 +12,10 @@ pub struct App {
     pub input: String,
     pub input_mode: InputMode,
     pub messages: Vec<String>,
+    pub total_time: Vec<u16>,
+    pub total_time_m: u16,
+    pub progress: u16,
+    pub time_bar: ProgressBar,
 }
 
 impl Default for App {
@@ -19,6 +24,10 @@ impl Default for App {
             input: String::new(),
             input_mode: InputMode::Normal,
             messages: Vec::new(),
+            total_time: Vec::new(),
+            total_time_m: 0,
+            progress: 0,
+            time_bar: ProgressBar::new(10)
         }
     }
 }
@@ -38,7 +47,12 @@ impl App {
 
             KeyCode::Esc => self.set_normal_mode(),
             KeyCode::Enter => {
-                self.messages.push(self.input.drain(..).collect());
+                self.total_time.push(
+                    self.input
+                        .trim()
+                        .parse::<u16>()
+                        .unwrap()
+                );
 
                 self.set_normal_mode()
             },
@@ -49,6 +63,14 @@ impl App {
             },
 
             _ => {}
+        }
+    }
+
+    pub fn on_tick(&mut self) {
+        self.progress += 100 / self.total_time[0];
+
+        if self.progress > 100 {
+            self.progress = 100;
         }
     }
 }
